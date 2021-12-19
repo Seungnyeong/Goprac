@@ -1,26 +1,53 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-
-	"github.com/snkim/learngo/mydict"
+	"net/http"
 )
 
+type requestResult struct {
+	url    string
+	status string
+}
+
+var errRequestFailed = errors.New("Request Failed")
+
 func main() {
-	dictionary := mydict.Dictionary{"first": "First Word"}
-	word := "hello"
-	definition := "Greeting"
-	definition, error := dictionary.Search("first")
-	if error != nil {
-		fmt.Println(error)
-	} else {
-		fmt.Println(definition)
+	results := make(map[string]string)
+	c := make(chan requestResult)
+	urls := []string{
+		"https://www.airbnb.com/",
+		"https://www.google.com/",
+		"https://www.amazon.com/",
+		"https://www.reddit.com/",
+		"https://www.google.com/",
+		"https://soundcloud.com/",
+		"https://www.facebook.com/",
+		"https://www.instagram.com/",
+		"https://academy.nomadcoders.co/",
 	}
 
-	err := dictionary.Add("hello", "Greeting")
-	if err != nil {
-		fmt.Println(err)
+	for _, url := range urls {
+		go hitURL(url, c)
 	}
-	hello, error := dictionary.Search(word)
-	fmt.Println(hello)
+
+	for i := 0; i < len(urls); i++ {
+		result := <-c
+		results[result.url] = result.status
+	}
+
+	for url, status := range results {
+		fmt.Println(url, status)
+	}
+
+}
+
+func hitURL(url string, c chan<- requestResult) {
+	resp, err := http.Get(url)
+	status := "OK"
+	if err != nil || resp.StatusCode >= 400 {
+		c <- requestResult{url: url, status: "FAILED"}
+	}
+	c <- requestResult{url: url, status: status}
 }
